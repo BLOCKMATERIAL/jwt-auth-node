@@ -11,9 +11,9 @@ class UserService {
             throw new Error(`Use exist with this email ${email}`)
         }
         const hashPassword = await bcrypt.hash(password, 3);
-        const activationLink =uuid.v4();
+        const activationLink = uuid.v4();
         const user = await UserModel.create({email, password: hashPassword, activationLink})
-        await mailService.sendActivationMail(email,activationLink)
+        await mailService.sendActivationMail(email, `${process.env.API_URL}/api/activate/${activationLink}` )
         const userDto = new UserDto(user);
         const tokens = tokensService.generateToken({...userDto});
         await tokensService.saveToken(user.id,tokens.refreshToken);
@@ -22,6 +22,15 @@ class UserService {
             ...tokens,
             user: userDto
         }
+    }
+
+    async activate(activationLink) {
+        const user = await UserModel.findOne({activationLink})
+        if (!user) {
+            throw new Error('Неккоректная ссылка активации')
+        }
+        user.isActivated = true;
+        await user.save();
     }
 }
 
